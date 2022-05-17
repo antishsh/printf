@@ -1,136 +1,90 @@
 #include "main.h"
 
+void cleanup(va_list args, buffer_t *output);
+int run_printf(const char *format, va_list args, buffer_t *output);
+int _printf(const char *format, ...);
+
 /**
- * _putchar - a function to print a char
- * @c: a charcter to prinr
- *
- * Return: void function
+ * cleanup - Peforms cleanup operations for _printf.
+ * @args: A va_list of arguments provided to _printf.
+ * @output: A buffer_t struct.
  */
-
-int _putchar(char c)
+void cleanup(va_list args, buffer_t *output)
 {
-
-	write(1, &c, 1);
-
-	return (1);
+	va_end(args);
+	write(1, output->start, output->len);
+	free_buffer(output);
 }
 
 /**
- * printchar - a function to print a character argument
- * @pargs: a variadic list
+ * run_printf - Reads through the format string for _printf.
+ * @format: Character string to print - may contain directives.
+ * @output: A buffer_t struct containing a buffer.
+ * @args: A va_list of arguments.
  *
- * Return: 1 in success
+ * Return: The number of characters stored to output.
  */
-
-int printchar(va_list pargs)
+int run_printf(const char *format, va_list args, buffer_t *output)
 {
-	_putchar(va_arg(pargs, int));
-	return (1);
+	int i, wid, prec, ret = 0;
+	char tmp;
+	unsigned char flags, len;
+	unsigned int (*f)(va_list, buffer_t *,
+			unsigned char, int, int, unsigned char);
+
+	for (i = 0; *(format + i); i++)
+	{
+		len = 0;
+		if (*(format + i) == '%')
+		{
+			tmp = 0;
+			flags = handle_flags(format + i + 1, &tmp);
+			wid = handle_width(args, format + i + tmp + 1, &tmp);
+			prec = handle_precision(args, format + i + tmp + 1,
+					&tmp);
+			len = handle_length(format + i + tmp + 1, &tmp);
+
+			f = handle_specifiers(format + i + tmp + 1);
+			if (f != NULL)
+			{
+				i += tmp + 1;
+				ret += f(args, output, flags, wid, prec, len);
+				continue;
+			}
+			else if (*(format + i + tmp + 1) == '\0')
+			{
+				ret = -1;
+				break;
+			}
+		}
+		ret += _memcpy(output, (format + i), 1);
+		i += (len != 0) ? 1 : 0;
+	}
+	cleanup(args, output);
+	return (ret);
 }
 
 /**
- * printstr - a function to print a string variable argument
- * @pargs: a variadic list
+ * _printf - Outputs a formatted string.
+ * @format: Character string to print - may contain directives.
  *
- * Return: 1 in success
+ * Return: The number of characters printed.
  */
-
-int printstr(va_list pargs)
-{
-	char *s;
-	int i = 0;
-
-	s = va_arg(pargs, char *);
-
-	if (s == NULL)
-		s = "(null)";
-
-	while (s[i] != '\0')
-	_putchar(s[i++]);
-
-	return (i);
-}
-
-/**
- * _printf - a function to replace printf
- * @format: a string pointer
- *
- * Return: returns an integer
- */
-
 int _printf(const char *format, ...)
 {
+	buffer_t *output;
 	va_list args;
-	int i = 0, count = 0;
+	int ret;
+
+	if (format == NULL)
+		return (-1);
+	output = init_buffer();
+	if (output == NULL)
+		return (-1);
 
 	va_start(args, format);
 
-	if (!format)
-		return (-1);
+	ret = run_printf(format, args, output);
 
-	while (format[i] != '\0')
-	{
-		if (format[i] == '%')
-		{
-			i++;
-			if (format[i] == '%')
-			{
-				_putchar(format[i++]);
-				count++;
-				continue;
-			}
-			else if (format[i] == '\0')
-				continue;
-			if (get_func(format[i]) == NULL)
-			{
-				_putchar(format[i - 1]);
-				_putchar(format[i++]);
-				count += 2;
-				continue; }
-			count += get_func(format[i++])(args);
-			continue;
-		}
-		else
-		{
-			_putchar(format[i]);
-		}
-		i++;
-		count++;
-	}
-
-	return (count);
-}
-
-/**
- * get_func - a function finder for the conversion specifiers
- * @c: a character to act like as a specifier
- *
- * Return: an integer
- */
-
-int (*get_func(char c))(va_list)
-{
-	spec funcs[] = {
-		{ 'c', printchar},
-		{ 's', printstr},
-		{ 'S', printstr_custom},
-		{ 'd', printint},
-		{ 'i', printint},
-		{ 'u', printuns},
-		{ 'b', printubin},
-		{ 'o', printuoct},
-		{ 'x', printuhex},
-		{ 'X', printuhex_C},
-		{ 'p', printaddr},
-		{ 'r', printrevstr},
-		{ 'R', printrotstr},
-		{ '\0', NULL}
-			};
-
-	int i = 0;
-
-	while (funcs[i].ch != '\0' && funcs[i].ch != c)
-		i++;
-
-	return (funcs[i].f);
+	return (ret);
 }
