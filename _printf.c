@@ -1,54 +1,136 @@
 #include "main.h"
 
+/**
+ * _putchar - a function to print a char
+ * @c: a charcter to prinr
+ *
+ * Return: void function
+ */
 
+int _putchar(char c)
+{
+
+	write(1, &c, 1);
+
+	return (1);
+}
 
 /**
+ * printchar - a function to print a character argument
+ * @pargs: a variadic list
  *
- *  * _printf - produces output according to a format
+ * Return: 1 in success
+ */
+
+int printchar(va_list pargs)
+{
+	_putchar(va_arg(pargs, int));
+	return (1);
+}
+
+/**
+ * printstr - a function to print a string variable argument
+ * @pargs: a variadic list
  *
- *   * @format: format string containing the characters and the specifiers
+ * Return: 1 in success
+ */
+
+int printstr(va_list pargs)
+{
+	char *s;
+	int i = 0;
+
+	s = va_arg(pargs, char *);
+
+	if (s == NULL)
+		s = "(null)";
+
+	while (s[i] != '\0')
+	_putchar(s[i++]);
+
+	return (i);
+}
+
+/**
+ * _printf - a function to replace printf
+ * @format: a string pointer
  *
- *    * Description: this function will call the get_print() function that will
- *
- *     * determine which printing function to call depending on the conversion
- *
- *      * specifiers contained into fmt
- *
- *       * Return: length of the formatted output string
- *
- *        */
+ * Return: returns an integer
+ */
 
 int _printf(const char *format, ...)
-
 {
-	int (*pfunc)(va_list, flags_t *);
-	const char *p;
-	va_list arguments;
-	flags_t flags = {0, 0, 0};
-	register int count = 0;
-	va_start(arguments, format);
-	if (!format || (format[0] == '%' && !format[1]))
+	va_list args;
+	int i = 0, count = 0;
+
+	va_start(args, format);
+
+	if (!format)
 		return (-1);
-	if (format[0] == '%' && format[1] == ' ' && !format[2])	
-		return (-1);
-	for (p = format; *p; p++)
+
+	while (format[i] != '\0')
 	{
-		if (*p == '%')
+		if (format[i] == '%')
 		{
-			p++;
-			if (*p == '%')
+			i++;
+			if (format[i] == '%')
 			{
-				count += _putchar('%');
+				_putchar(format[i++]);
+				count++;
 				continue;
 			}
-			while (get_flag(*p, &flags))
-				p++;
-			pfunc = get_print(*p);
-			count += (pfunc)? pfunc(arguments, &flags): _printf("%%%c", *p);
-		} else
-			count += _putchar(*p);
+			else if (format[i] == '\0')
+				continue;
+			if (get_func(format[i]) == NULL)
+			{
+				_putchar(format[i - 1]);
+				_putchar(format[i++]);
+				count += 2;
+				continue; }
+			count += get_func(format[i++])(args);
+			continue;
+		}
+		else
+		{
+			_putchar(format[i]);
+		}
+		i++;
+		count++;
 	}
-	_putchar(-1);
-	va_end(arguments);
+
 	return (count);
+}
+
+/**
+ * get_func - a function finder for the conversion specifiers
+ * @c: a character to act like as a specifier
+ *
+ * Return: an integer
+ */
+
+int (*get_func(char c))(va_list)
+{
+	spec funcs[] = {
+		{ 'c', printchar},
+		{ 's', printstr},
+		{ 'S', printstr_custom},
+		{ 'd', printint},
+		{ 'i', printint},
+		{ 'u', printuns},
+		{ 'b', printubin},
+		{ 'o', printuoct},
+		{ 'x', printuhex},
+		{ 'X', printuhex_C},
+		{ 'p', printaddr},
+		{ 'r', printrevstr},
+		{ 'R', printrotstr},
+		{ '\0', NULL}
+			};
+
+	int i = 0;
+
+	while (funcs[i].ch != '\0' && funcs[i].ch != c)
+		i++;
+
+	return (funcs[i].f);
 }
